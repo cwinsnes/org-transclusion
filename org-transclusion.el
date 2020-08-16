@@ -31,7 +31,7 @@ This will add an overlay to the transcluded text to keep the text read-only."
     (goto-char transclusion-point)
     (insert "\n") ;; Make sure a new line exists after transclusion regex text
     (let* ((file-string (org-transclusion-read-file filename))
-	   (overlay (ov-insert file-string)))
+           (overlay (ov-insert file-string)))
       (ov-read-only overlay t nil)
       (ov-set overlay 'face 'font-lock-warning-face)
       overlay)))
@@ -42,14 +42,14 @@ This will add an overlay to the transcluded text to keep the text read-only."
     (save-match-data
       (goto-char (point-min))
       (while (re-search-forward org-transclusion-regex nil t)
-	(when (match-string 0)
- 	  (let ((transclusion-point (match-end 0))
-		(filename (match-substitute-replacement "\\1")))
-	    (org-transclusion-transclude-file filename transclusion-point)
-	    ))))))
+        (when (match-string 0)
+          (let ((transclusion-point (match-end 0))
+                (filename (match-substitute-replacement "\\1")))
+            (org-transclusion-transclude-file filename transclusion-point)
+            ))))))
 
 (defun org-transclusion-xcl ()
-  "Testing function to run transclusions on current file."
+  "Temporrary testing function to run transclusions on current file."
   (interactive)
   (org-transclusion-find-transclusions))
 
