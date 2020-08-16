@@ -43,17 +43,19 @@ Optionally only returns the lines between START and END."
 
 (defun org-transclusion-clear-transclusion (overlay)
   "Remove a single transclusion using its OVERLAY."
-  (kill-region (ov-beg overlay) (ov-end overlay))
   (goto-char (ov-beg overlay))
-  (kill-whole-line)
+  (kill-region (ov-beg overlay) (ov-end overlay))
+  (kill-whole-line) ;; Remove the \n inserted before
   (ov-reset overlay))
 
 (defun org-transclusion-remove-transclusions ()
   "Remove all transclusions and transclusion overlays from current buffer."
   (interactive)
-  (save-excursion
-    (let ((overlays (ov-in 'org-transclusion)))
-      (mapc 'org-transclusion-clear-transclusion overlays))))
+  (let ((buf-modified (buffer-modified-p)))
+    (save-excursion
+      (let ((overlays (ov-in 'org-transclusion)))
+        (mapc 'org-transclusion-clear-transclusion overlays)))
+    (set-buffer-modified-p buf-modified)))
 
 (defun org-transclusion-transclude-file (filename transclusion-point &optional start end)
   "Insert the transclusion of FILENAME at TRANSCLUSION-POINT.
@@ -63,14 +65,16 @@ If only START is supplied, go to the end of the file from START.
 This will add an overlay to the transcluded
 text to keep the text read-only."
   (save-excursion
-    (goto-char transclusion-point)
-    (insert "\n") ;; Make sure a new line exists after transclusion regex text
     (let* ((file-string (org-transclusion-read-file filename start end))
            (overlay (ov-insert file-string)))
-      (ov-read-only overlay t nil)
-      (ov-set overlay 'face 'font-lock-warning-face)
-      (ov-set overlay 'org-transclusion t)
-      overlay)))
+      (ov-set overlay 'evaporate t)
+      (unless (equal file-string "")
+        (goto-char transclusion-point)
+        (insert "\n") ;; Make sure a new line exists after transclusion regex text
+        (ov-read-only overlay t nil)
+        (ov-set overlay 'face 'font-lock-warning-face)
+        (ov-set overlay 'org-transclusion t)
+        overlay))))
 
 (defun org-transclusion-find-transclusions ()
   "Read the current buffer to find and transclude instances that match the transclusion regex."
@@ -78,20 +82,22 @@ text to keep the text read-only."
   (save-excursion
     (save-match-data
       (goto-char (point-min))
-      (while (re-search-forward org-transclusion-regex nil t)
-        (when (match-string 0)
-          (let ((transclusion-point (match-end 0))
-                (filename (match-substitute-replacement "\\1"))
-                (start-point (match-substitute-replacement "\\2"))
-                (end-point (match-substitute-replacement "\\3")))
+      (let ((buf-modified (buffer-modified-p)))
+        (while (re-search-forward org-transclusion-regex nil t)
+          (when (match-string 0)
+            (let ((transclusion-point (match-end 0))
+                  (filename (match-substitute-replacement "\\1"))
+                  (start-point (match-substitute-replacement "\\2"))
+                  (end-point (match-substitute-replacement "\\3")))
 
-            (if (equal start-point "")
-                (setq start-point nil)
-              (setq start-point (string-to-number start-point)))
-            (if (equal end-point "")
-                (setq end-point nil)
-              (setq end-point (string-to-number end-point)))
-            (org-transclusion-transclude-file filename transclusion-point start-point end-point)))))))
+              (if (equal start-point "")
+                  (setq start-point nil)
+                (setq start-point (string-to-number start-point)))
+              (if (equal end-point "")
+                  (setq end-point nil)
+                (setq end-point (string-to-number end-point)))
+              (org-transclusion-transclude-file filename transclusion-point start-point end-point)))
+          (set-buffer-modified-p buf-modified))))))
 
 (define-minor-mode org-transclusion-mode
   "Toggle org-transclusion-mode.
