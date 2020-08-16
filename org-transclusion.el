@@ -8,6 +8,8 @@
 ;;; Code:
 (require 'ov)
 
+(defvar-local org-transclusion-overlay-points nil)
+
 (defgroup org-transclusion nil
   "Transclusion minor mode for org"
   :group 'org
@@ -26,6 +28,7 @@ to be included from the file."
 (progn
   (setq org-transclusion-mode-map (make-sparse-keymap))
   (define-key org-transclusion-mode-map (kbd "C-M-x") 'org-transclusion-find-transclusions)
+  (define-key org-transclusion-mode-map (kbd "C-c e") 'org-transclusion-toggle-transclusion)
   (define-key org-transclusion-mode-map (kbd "C-M-z") 'org-transclusion-clear-all-transclusions))
 
 (defun org-transclusion-read-file (path &optional start end)
@@ -55,7 +58,8 @@ Optionally only returns the lines between START and END."
     (save-excursion
       (let ((transclusion-overlays (ov-in 'org-transclusion)))
         (mapc (lambda (overlay)
-                (org-transclusion-clear-transclusion overlay)) transclusion-overlays))
+                (org-transclusion-clear-transclusion overlay))
+              transclusion-overlays))
       (set-buffer-modified-p buf-modified))))
 
 (defun org-transclusion-transclude-file (filename transclusion-point &optional start end)
@@ -77,12 +81,18 @@ text to keep the text read-only."
         (ov-set overlay 'org-transclusion t)
         overlay))))
 
+
 (defun org-transclusion-toggle-transclusion ()
+  "Toggle a single Transclusion."
   (interactive)
   (save-excursion
     (let ((overlay (or (ov-at (point)) (ov-at (+ (line-end-position) 1)))))
       (if overlay
-          (org-transclusion-clear-transclusion overlay)
+          (progn
+            ;; Remove one from ov-beg due to \n inserted by transclude
+            (setq org-transclusion-overlay-points
+                  (delete (- (ov-beg overlay) 1) org-transclusion-overlay-points))
+            (org-transclusion-clear-transclusion overlay))
         (progn
           (beginning-of-line)
           (let ((begin-bound (line-end-position)))
@@ -98,7 +108,9 @@ text to keep the text read-only."
                 (if (equal end-point "")
                     (setq end-point nil)
                   (setq end-point (string-to-number end-point)))
-                (org-transclusion-transclude-file filename transclusion-point start-point end-point)))))))))
+                (push transclusion-point org-transclusion-overlay-points)
+                (org-transclusion-transclude-file filename transclusion-point
+                                                  start-point end-point)))))))))
 
 (defun org-transclusion-find-transclusions ()
   "Read the current buffer to find and transclude instances that match the transclusion regex."
@@ -119,9 +131,21 @@ the syntax from the \\[org-transclusion-regex] variable."
   :group org-transclusion
   :keymap org-transclusion-mode-map)
 
+(defun org-transclusion--restore-transclusions ()
+  "Restore all transclusions in the overlay-points after save."
+  (mapc (lambda (p)
+          (progn
+            (goto-char p)
+            (org-transclusion-toggle-transclusion)))
+        org-transclusion-overlay-points))
+
 (add-hook 'org-transclusion-mode-hook
           (lambda ()
             (add-hook 'before-save-hook 'org-transclusion-clear-all-transclusions)))
+
+(add-hook 'org-transclusion-mode-hook
+          (lambda ()
+            (add-hook 'after-save-hook 'org-transclusion--restore-transclusions)))
 
 (provide 'org-transclusion)
 ;;; org-transclusion.el ends here
