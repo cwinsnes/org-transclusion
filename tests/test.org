@@ -1,4 +1,9 @@
 * This is a testing file
 
-
 {{Transclude: test.txt}}
+
+{{Transclude: test.txt 0 0}}
+
+{{Transclude: test.txt 3 5}}
+
+{{Transclude: test.txt 8}}
