@@ -18,6 +18,11 @@
   :group 'org-transclusion
   :type 'string)
 
+(defvar org-transclusion-mode-map nil "Keymap for org-transclusion-mode.")
+(progn
+  (setq org-transclusion-mode-map (make-sparse-keymap))
+  (define-key org-transclusion-mode-map (kbd "C-M-x") 'org-transclusion-find-transclusions))
+
 (defun org-transclusion-read-file (path)
   "Read the file at PATH and return its contents as a string."
   (with-temp-buffer
@@ -38,6 +43,7 @@ This will add an overlay to the transcluded text to keep the text read-only."
 
 (defun org-transclusion-find-transclusions ()
   "Read the current buffer to find all instances that match the transclusion regex."
+  (interactive)
   (save-excursion
     (save-match-data
       (goto-char (point-min))
@@ -48,10 +54,15 @@ This will add an overlay to the transcluded text to keep the text read-only."
             (org-transclusion-transclude-file filename transclusion-point)
             ))))))
 
-(defun org-transclusion-xcl ()
-  "Temporrary testing function to run transclusions on current file."
-  (interactive)
-  (org-transclusion-find-transclusions))
+(define-minor-mode org-transclusion-mode
+  "Toggle org-transclusion-mode.
+When org-transclusion-mode is enabled, add transclusion functionality to org-mode using
+the syntax from the \\[org-transclusion-regex] variable."
+
+  :init-value nil
+  :lighter "org-tcx"
+  :group 'org-transclusion
+  :keymap org-transclusion-mode-map)
 
 (provide 'org-transclusion)
 ;;; org-transclusion.el ends here
