@@ -24,12 +24,12 @@ to be included from the file."
   :group 'org-transclusion
   :type 'string)
 
-(defvar org-transclusion-mode-map nil "Keymap for org-transclusion-mode.")
+(defvar org-transclusion-mode-map nil "Keymap for 'org-transclusion-mode.")
 (progn
   (setq org-transclusion-mode-map (make-sparse-keymap))
-  (define-key org-transclusion-mode-map (kbd "C-M-x") 'org-transclusion-find-transclusions)
+  (define-key org-transclusion-mode-map (kbd "C-M-x") 'org-transclusion-open-all-transclusions)
   (define-key org-transclusion-mode-map (kbd "C-c e") 'org-transclusion-toggle-transclusion)
-  (define-key org-transclusion-mode-map (kbd "C-M-z") 'org-transclusion-clear-all-transclusions))
+  (define-key org-transclusion-mode-map (kbd "C-M-z") 'org-transclusion-close-all-transclusions))
 
 (defun org-transclusion-read-file (path &optional start end)
   "Read the file at PATH and return its contents as a string.
@@ -110,7 +110,7 @@ Else toggle it"
   (org-transclusion-open-all-transclusions 'close))
 
 (defun org-transclusion-open-all-transclusions (&optional force)
-  "Read the current buffer to find and open transclusion instances that match the transclusion regex.
+  "Read the current buffer to find and open transclusions.
 If FORCE is nil, open all transclusions
 If FORCE is non-nil, instead close all transclusions."
   (interactive)
@@ -158,7 +158,7 @@ Will then clear overlay-points."
     (setq org-transclusion-overlay-points nil)))
 
 (defun org-transclusion--toggle-restoration-hooks ()
-  "Activate and deactivate restorations when entering and exiting org-transclusion mode"
+  "Activate and deactivate restorations when entering and exiting org-transclusion mode."
   ;; Make the restoration hooks buffer local.
   (if org-transclusion-mode
       (progn
