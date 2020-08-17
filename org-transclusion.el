@@ -133,11 +133,12 @@ the syntax from the \\[org-transclusion-regex] variable."
 
 (defun org-transclusion--restore-transclusions ()
   "Restore all transclusions in the overlay-points after save."
-  (mapc (lambda (p)
-          (progn
-            (goto-char p)
-            (org-transclusion-toggle-transclusion)))
-        org-transclusion-overlay-points))
+  (save-excursion
+    (mapc (lambda (p)
+	    (progn
+	      (goto-char p)
+	      (org-transclusion-toggle-transclusion)))
+	  org-transclusion-overlay-points)))
 
 (add-hook 'org-transclusion-mode-hook
           (lambda ()
