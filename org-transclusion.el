@@ -157,13 +157,18 @@ Will then clear overlay-points."
 	  org-transclusion-overlay-points)
     (setq org-transclusion-overlay-points nil)))
 
-(add-hook 'org-transclusion-mode-hook
-          (lambda ()
-            (add-hook 'before-save-hook 'org-transclusion--clear-all-transclusions)))
+(defun org-transclusion--toggle-restoration-hooks ()
+  "Activate and deactivate restorations when entering and exiting org-transclusion mode"
+  ;; Make the restoration hooks buffer local.
+  (if org-transclusion-mode
+      (progn
+	(add-hook 'before-save-hook 'org-transclusion--clear-all-transclusions nil t)
+	(add-hook 'after-save-hook 'org-transclusion--restore-transclusions nil t))
+    (progn
+      (remove-hook 'before-save-hook 'org-transclusion--clear-all-transclusions t)
+      (remove-hook 'after-save-hook 'org-transclusion--restore-transclusions t))))
 
-(add-hook 'org-transclusion-mode-hook
-          (lambda ()
-            (add-hook 'after-save-hook 'org-transclusion--restore-transclusions)))
+(add-hook 'org-transclusion-mode-hook 'org-transclusion--toggle-restoration-hooks)
 
 (provide 'org-transclusion)
 ;;; org-transclusion.el ends here
