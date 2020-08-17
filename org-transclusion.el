@@ -51,16 +51,6 @@ Optionally only returns the lines between START and END."
   (kill-whole-line) ;; Remove the \n inserted before
   (ov-reset overlay))
 
-(defun org-transclusion-clear-all-transclusions ()
-  "Remove all transclusions and transclusion overlays from current buffer."
-  (interactive)
-  (let ((buf-modified (buffer-modified-p)))
-    (save-excursion
-      (let ((transclusion-overlays (ov-in 'org-transclusion)))
-        (mapc (lambda (overlay)
-                (org-transclusion-clear-transclusion overlay))
-              transclusion-overlays))
-      (set-buffer-modified-p buf-modified))))
 
 (defun org-transclusion-transclude-file (filename transclusion-point &optional start end)
   "Insert the transclusion of FILENAME at TRANSCLUSION-POINT.
@@ -82,45 +72,55 @@ text to keep the text read-only."
         overlay))))
 
 
-(defun org-transclusion-toggle-transclusion ()
-  "Toggle a single Transclusion."
+(defun org-transclusion-toggle-transclusion (&optional force)
+  "Toggle a single Transclusion.
+If FORCE equals 'open, force the transclusion open.
+If FORCE equals 'close, force the transclusion closed.
+Else toggle it"
   (interactive)
   (save-excursion
-    (let ((overlay (or (ov-at (point)) (ov-at (+ (line-end-position) 1)))))
-      (if overlay
-          (progn
-            ;; Remove one from ov-beg due to \n inserted by transclude
-            (setq org-transclusion-overlay-points
-                  (delete (- (ov-beg overlay) 1) org-transclusion-overlay-points))
-            (org-transclusion-clear-transclusion overlay))
-        (progn
-          (beginning-of-line)
-          (let ((begin-bound (line-end-position)))
-            (when (re-search-forward org-transclusion-regex begin-bound t)
-              (let ((transclusion-point (match-end 0))
-                    (filename (match-substitute-replacement "\\1"))
-                    (start-point (match-substitute-replacement "\\2"))
-                    (end-point (match-substitute-replacement "\\3")))
+    (let ((overlay (or (ov-at (point)) (ov-at (+ (line-end-position) 1))))
+	  (buf-modified (buffer-modified-p)))
+      (if (and overlay (not (equal 'open force)))
+	  (progn
+	    (org-transclusion-clear-transclusion overlay))
+	(if (and (not overlay) (not (equal 'close force)))
+	    (progn
+	      (beginning-of-line)
+	      (let ((begin-bound (line-end-position)))
+		(when (re-search-forward org-transclusion-regex begin-bound t)
+		  (let ((transclusion-point (match-end 0))
+			(filename (match-substitute-replacement "\\1"))
+			(start-point (match-substitute-replacement "\\2"))
+			(end-point (match-substitute-replacement "\\3")))
 
-                (if (equal start-point "")
-                    (setq start-point nil)
-                  (setq start-point (string-to-number start-point)))
-                (if (equal end-point "")
-                    (setq end-point nil)
-                  (setq end-point (string-to-number end-point)))
-                (push transclusion-point org-transclusion-overlay-points)
-                (org-transclusion-transclude-file filename transclusion-point
-                                                  start-point end-point)))))))))
+		    (if (equal start-point "")
+			(setq start-point nil)
+		      (setq start-point (string-to-number start-point)))
+		    (if (equal end-point "")
+			(setq end-point nil)
+		      (setq end-point (string-to-number end-point)))
+		    (org-transclusion-transclude-file filename transclusion-point
+						      start-point end-point)))))))
+      (set-buffer-modified-p buf-modified))))
 
-(defun org-transclusion-find-transclusions ()
-  "Read the current buffer to find and transclude instances that match the transclusion regex."
+(defun org-transclusion-close-all-transclusions ()
+  "Closes all transclusions."
+  (interactive)
+  (org-transclusion-open-all-transclusions 'close))
+
+(defun org-transclusion-open-all-transclusions (&optional force)
+  "Read the current buffer to find and open transclusion instances that match the transclusion regex.
+If FORCE is nil, open all transclusions
+If FORCE is non-nil, instead close all transclusions."
   (interactive)
   (save-excursion
     (save-match-data
       (goto-char (point-min))
-      (let ((buf-modified (buffer-modified-p)))
-        (while (re-search-forward org-transclusion-regex nil t)
-          (org-transclusion-toggle-transclusion))))))
+      (while (re-search-forward org-transclusion-regex nil t)
+	(if force
+	    (org-transclusion-toggle-transclusion 'close)
+	  (org-transclusion-toggle-transclusion 'open))))))
 
 (define-minor-mode org-transclusion-mode
   "Toggle org-transclusion-mode.
@@ -131,18 +131,35 @@ the syntax from the \\[org-transclusion-regex] variable."
   :group org-transclusion
   :keymap org-transclusion-mode-map)
 
+(defun org-transclusion--clear-all-transclusions ()
+  "Remove all transclusions and transclusion overlays from current buffer.
+Will first set overlay points to nil and then fill it with points for restore."
+  (setq org-transclusion-overlay-points nil)
+  (let ((buf-modified (buffer-modified-p)))
+    (save-excursion
+      (let ((transclusion-overlays (ov-in 'org-transclusion)))
+	(mapc (lambda (overlay)
+		(progn
+		  ;; Use ov-beg - 1 because of the inserted \n
+		  (push (- (ov-beg overlay) 1) org-transclusion-overlay-points)
+		  (org-transclusion-clear-transclusion overlay)))
+	      transclusion-overlays))
+      (set-buffer-modified-p buf-modified))))
+
 (defun org-transclusion--restore-transclusions ()
-  "Restore all transclusions in the overlay-points after save."
+  "Restore all transclusions in the overlay-points after save.
+Will then clear overlay-points."
   (save-excursion
     (mapc (lambda (p)
 	    (progn
 	      (goto-char p)
 	      (org-transclusion-toggle-transclusion)))
-	  org-transclusion-overlay-points)))
+	  org-transclusion-overlay-points)
+    (setq org-transclusion-overlay-points nil)))
 
 (add-hook 'org-transclusion-mode-hook
           (lambda ()
-            (add-hook 'before-save-hook 'org-transclusion-clear-all-transclusions)))
+            (add-hook 'before-save-hook 'org-transclusion--clear-all-transclusions)))
 
 (add-hook 'org-transclusion-mode-hook
           (lambda ()
