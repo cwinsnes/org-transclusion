@@ -24,6 +24,11 @@ to be included from the file."
   :group 'org-transclusion
   :type 'string)
 
+(defcustom org-transclusion-track-updates t
+  "If non-nil, add save hooks to the transcluded files buffer to keep the transclusion updated with edits."
+  :group 'org-transclusion
+  :type 'boolean)
+
 (defvar org-transclusion-mode-map nil "Keymap for 'org-transclusion-mode.")
 (progn
   (setq org-transclusion-mode-map (make-sparse-keymap))
@@ -52,6 +57,22 @@ Optionally only returns the lines between START and END."
   (ov-reset overlay))
 
 
+(defun org-transclusion-buffer-update ()
+  "Update transclusions based on another buffer being saved."
+  (message "adsdsa")
+  (message (buffer-file-name)))
+
+
+(defun org-transclusion-add-save-hook (overlay)
+  "Add an after-save hook to the buffer described in OVERLAY.
+The save hook will call 'org-transclusion-buffer-update upon save in the described buffer"
+  (let* ((file-path (ov-val overlay 'org-transclusion-file-path))
+	 (file-buffer (get-file-buffer file-path)))
+    (when file-buffer
+      (with-current-buffer file-buffer
+	(add-hook 'after-save-hook 'org-transclusion-buffer-update nil t)))))
+
+
 (defun org-transclusion-transclude-file (filename transclusion-point &optional start end)
   "Insert the transclusion of FILENAME at TRANSCLUSION-POINT.
 Can optionally force the transclusion to only happen from the
@@ -69,6 +90,11 @@ text to keep the text read-only."
         (ov-read-only overlay t nil)
         (ov-set overlay 'face 'font-lock-warning-face)
         (ov-set overlay 'org-transclusion t)
+	(ov-set overlay 'org-transclusion-file-path filename)
+	(ov-set overlay 'org-transclusion-line-start start)
+	(ov-set overlay 'org-transclusion-line-end end)
+	(when org-transclusion-track-updates
+	  (org-transclusion-add-save-hook overlay))
         overlay))))
 
 
