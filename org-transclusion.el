@@ -15,6 +15,11 @@
   :group 'org
   :prefix 'org-transclusion-)
 
+(defface org-transclusion-face
+  '((t :inherit font-lock-warning-face))
+  "Transclusion mode face used to highlight tranclusions."
+  :group 'org-transclusion-faces)
+
 (defcustom org-transclusion-regex
   "{{Transclude: \\(.+?\\)\\([[:blank:]]+[[:digit:]]+\\)?\\([[:blank:]]+[[:digit:]]+\\)?}}"
   "String used to identify Transclusion areas.
@@ -67,7 +72,7 @@ text to keep the text read-only."
         (goto-char transclusion-point)
         (insert "\n") ;; Make sure a new line exists after transclusion regex text
         (ov-read-only overlay t nil)
-        (ov-set overlay 'face 'font-lock-warning-face)
+        (ov-set overlay 'face 'org-transclusion-face)
         (ov-set overlay 'org-transclusion t)
         overlay))))
 
