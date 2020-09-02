@@ -1,0 +1,22 @@
+* Org transclusion mode
+
+A minor mode for [[https://en.wikipedia.org/wiki/Transclusion][transcluding]] parts of other files into your org files.
+The transcluded parts will not be saved to your file when saving.
+
+** How to use:
+1. Enable the org-transclusion-mode in an org buffer.
+2. Use one of the following syntaxes to transclude a file.
+   - ={{Transclude: <filename>}}=
+   - ={{Transclude: <filename> [start]}}=
+   - ={{Transclude: <filename> [start] [end]}}=
+3. Run either =org-transclusion-toggle-transclusion= on the string or
+   =org-transclusion-open-all-transclusions= anywhere in the buffer.
+
+This will transclude the the specified file into your org file.
+
+The transcluded section(s) will be read-only and highlighted with the
+=org-transclusion-face=, which defaults to the same color as the
+=warning= face.
+
+To remove transclusions again:
+4. Run =org-transclusion-toggle-transclusion= at an open transclusion.
